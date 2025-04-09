@@ -130,6 +130,35 @@ const GameBoard = ({ currentPlayer, roomPlayers, isCurrentTurn, roomCode, socket
 
     // Only allow placing cards on face-down cards that aren't already covered
     if (!targetCard.isFaceUp) {
+      // Immediately update the local state
+      const updatedPlayers = localRoomPlayers.map(player => {
+        if (player.id === currentPlayer.id) {
+          // Remove the card from hand
+          const updatedHand = player.hand.filter(
+            card => !(card.value === draggedCard.value && card.suit === draggedCard.suit)
+          );
+          
+          // Add the card to the face-down card's covering cards
+          const updatedFaceDownCards = [...player.faceDownCards];
+          if (!updatedFaceDownCards[targetIndex].coveringCards) {
+            updatedFaceDownCards[targetIndex].coveringCards = [];
+          }
+          updatedFaceDownCards[targetIndex].coveringCards?.push({
+            ...draggedCard,
+            isFaceUp: true
+          });
+
+          return {
+            ...player,
+            hand: updatedHand,
+            faceDownCards: updatedFaceDownCards
+          };
+        }
+        return player;
+      });
+
+      setLocalRoomPlayers(updatedPlayers);
+
       console.log('Emitting placeCard event');
       socket.emit('placeCard', { 
         roomCode, 
@@ -143,6 +172,8 @@ const GameBoard = ({ currentPlayer, roomPlayers, isCurrentTurn, roomCode, socket
         console.log('Place card response:', response);
         if (response.error) {
           console.error('Error placing card:', response.error);
+          // Revert the local state if there was an error
+          setLocalRoomPlayers(roomPlayers);
         }
       });
     } else {
@@ -185,29 +216,33 @@ const GameBoard = ({ currentPlayer, roomPlayers, isCurrentTurn, roomCode, socket
               Your Cards
             </Text>
             <HStack gap={2} wrap="wrap" justify="center">
-              {currentPlayer.hand.map((card, index) => (
-                <DraggableCard
-                  key={index}
-                  card={card}
-                  index={index}
-                  isFaceUp={true}
-                  onCardDrop={handleCardDrop}
-                />
-              ))}
+              {localRoomPlayers
+                .find(player => player.id === currentPlayer.id)
+                ?.hand.map((card, index) => (
+                  <DraggableCard
+                    key={index}
+                    card={card}
+                    index={index}
+                    isFaceUp={true}
+                    onCardDrop={handleCardDrop}
+                  />
+                ))}
             </HStack>
             <Text>Face down cards:</Text>
             <HStack gap={2} wrap="wrap" justify="center">
-              {currentPlayer.faceDownCards.map((card, index) => (
-                <DraggableCard
-                  key={index}
-                  card={card}
-                  index={index}
-                  isFaceUp={false}
-                  onCardDrop={handleCardDrop}
-                  isCovered={card.coveringCards && card.coveringCards.length > 0}
-                  coveringCards={card.coveringCards}
-                />
-              ))}
+              {localRoomPlayers
+                .find(player => player.id === currentPlayer.id)
+                ?.faceDownCards.map((card, index) => (
+                  <DraggableCard
+                    key={index}
+                    card={card}
+                    index={index}
+                    isFaceUp={false}
+                    onCardDrop={handleCardDrop}
+                    isCovered={card.coveringCards && card.coveringCards.length > 0}
+                    coveringCards={card.coveringCards}
+                  />
+                ))}
             </HStack>
           </VStack>
         )}

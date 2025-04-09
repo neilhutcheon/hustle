@@ -264,11 +264,12 @@ io.on('connection', (socket) => {
       const [placedCard] = player.hand.splice(cardIndex, 1);
       console.log('Removed card from hand:', placedCard);
       
-      // Add the card to the face-down card's covering cards
+      // Add the card to the face-down card's covering cards and ensure it's visible
       if (!player.faceDownCards[faceDownCardIndex].coveringCards) {
         player.faceDownCards[faceDownCardIndex].coveringCards = [];
       }
-      player.faceDownCards[faceDownCardIndex].coveringCards?.push(placedCard);
+      const visibleCard = { ...placedCard, isFaceUp: true };
+      player.faceDownCards[faceDownCardIndex].coveringCards?.push(visibleCard);
       console.log('Added card to face-down card:', player.faceDownCards[faceDownCardIndex]);
 
       // Update the room and notify all players
